@@ -26,7 +26,7 @@ class Camera:
                             self.projection_matrix,
                             shadow=True,
                             renderer=p.ER_BULLET_HARDWARE_OPENGL)
-        return (np.reshape(images[2], (self.height, self.width, 4)) * 1. / 255.)
+        return (np.reshape(images[2], (self.height, self.width, 4)) * 1. / 255.)[:, :, :, ::-1]
 
 
 
