@@ -93,16 +93,16 @@ class Controller:
     def turn(self, point, velocity, maxForce, epsilon, K=5):
         vecPoint = [point[0] - self.position[0], point[1] - self.position[1]]
         err = getAngle(vecPoint, [1, 0]) - parse_angle(self.orientation[2])
+        if err > math.pi:
+            err = -(2*math.pi - err)
+        if err < -math.pi:
+            err = (2*math.pi + err)
         
         while abs(err) > epsilon:
             # print(err)
-            # print(getAngle(vecPoint, [1, 0]), parse_angle(self.orientation[2]), vecPoint)
-            if abs(err) > math.pi:
-                err = -(2*math.pi - err)
-            if abs(err) < -math.pi:
-                err = (2*math.pi + err)
-
             err = K * (err/math.pi)
+            # print(getAngle(vecPoint, [1, 0]), parse_angle(self.orientation[2]), vecPoint, err)
+
             p.setJointMotorControl(self.husky, self.front_left, p.VELOCITY_CONTROL, -err*velocity, maxForce)
             p.setJointMotorControl(self.husky, self.front_right, p.VELOCITY_CONTROL, err*velocity, maxForce)
             p.setJointMotorControl(self.husky, self.rear_left, p.VELOCITY_CONTROL, -err*velocity, maxForce)
@@ -110,6 +110,10 @@ class Controller:
             self.changeState()  
             vecPoint = [point[0] - self.position[0], point[1] - self.position[1]]
             err = getAngle(vecPoint, [1, 0]) - parse_angle(self.orientation[2])
+            if err > math.pi:
+                err = -(2*math.pi - err)
+            if err < -math.pi:
+                err = (2*math.pi + err)
             
             stepSimulation()
         self.stop()
@@ -136,6 +140,14 @@ class Controller:
         self.move([length, 0])
         self.move([0, 0])
 
+    def move_in_circle(self, radius=2, segments=24):
+        self.move([radius, 0])
+        theta = 2 * math.pi / segments
+        for i in range(1, segments+1):
+            x = radius * math.cos(i*theta)
+            y = radius * math.sin(i*theta)
+            self.move([x, y])
+
     def plot_position(self):
         plt.plot(*self.position_list)
         plt.show()
@@ -154,7 +166,7 @@ def process_images(cam1, cam2, cam3, cam4):
 
 global KILL_CAM_THREAD
 KILL_CAM_THREAD = False
-USE_CAMS = not False
+USE_CAMS = False
 
 if __name__ == '__main__':
     
@@ -189,8 +201,9 @@ if __name__ == '__main__':
         # cubePos, cubeOrn = p.getBasePositionAndOrientation(husky)
         # cubePos = roundList(cubePos)
         # print(cubePos)
-    cont.move_in_sqaure()
-    # cont.move([0,5])
+    # cont.move_in_sqaure()
+    # cont.move([5, 0])
+    cont.move_in_circle()
     cont.plot_position()
     if USE_CAMS:
         KILL_CAM_THREAD = True
