@@ -43,9 +43,10 @@ for el1, el2 in zip(poses, a):
     ax.plot([el1[0], el2[0]], [el1[1], el2[1]], [el1[2], el2[2]])
     print(el2)
 
-ax.scatter([2], [0], [0.5])
+ax.scatter([0], [0], [0.5], label="Ground Truth")
 
-print(final_pos)
-ax.scatter(*[[el] for el in final_pos])
 
+ax.scatter(*[[el] for el in final_pos], label="Estimated")
+
+plt.legend()
 plt.show()

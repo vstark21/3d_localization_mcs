@@ -1,0 +1,89 @@
+from utils import *
+
+global EST_CORDS, KILL_CAM_THREAD
+KILL_CAM_THREAD = False
+USE_CAMS = True
+EST_CORDS = [[], [], []]
+
+
+def process_images(cam1, cam2, cam3, cam4):
+    global KILL_CAM_THREAD, EST_CORDS
+    time.sleep(1)
+
+    while not KILL_CAM_THREAD:
+        stepSimulation()
+        lines = []
+
+        image = cam1.getCameraImage()
+        cX, cY = get_center(image, 'CAM1_M')
+        Rwc = get_world_coords(cam1, [cX, cY], 1)
+        lines.append(line3d(cam1.pos, Rwc))
+        cv2.imshow('CAM1', image)
+
+        image = cam2.getCameraImage()
+        cX, cY = get_center(image, 'CAM2_M')
+        Rwc = get_world_coords(cam2, [cX, cY], 2)
+        lines.append(line3d(cam2.pos, Rwc))
+        cv2.imshow('CAM2', image)
+
+        image = cam3.getCameraImage()
+        cX, cY = get_center(image, 'CAM3_M')
+        Rwc = get_world_coords(cam3, [cX, cY], 3)
+        lines.append(line3d(cam3.pos, Rwc))
+        cv2.imshow('CAM3', image)
+
+        image = cam4.getCameraImage()
+        cX, cY = get_center(image, 'CAM4_M')
+        Rwc = get_world_coords(cam4, [cX, cY], 4)
+        lines.append(line3d(cam4.pos, Rwc))
+        cv2.imshow('CAM4', image)
+
+        output = refine(lines)
+        print("OUTPUT : ", output)
+        EST_CORDS[0].append(output[0])
+        EST_CORDS[1].append(output[1])
+        EST_CORDS[2].append(output[2]-0.5)
+       
+        cv2.waitKey(1)
+
+if __name__ == '__main__':
+    
+    physicsClient = p.connect(p.GUI) # or p.DIRECT for non-graphical version
+    p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
+    p.setGravity(0,0,-9.8)
+
+    planeId = p.loadURDF("plane.urdf")
+
+    cont = Controller([0, 0, 0])
+
+    if USE_CAMS:
+        temp = 4
+        cam1 = Camera([temp, 0, temp], [-1, 0, 0])
+        cam2 = Camera([-temp, 0, temp], [1, 0, 0])
+        cam3 = Camera([0, temp, temp], [0, -1, 0])
+        cam4 = Camera([0, -temp, temp], [0, 1, 0])
+        cam_thread = threading.Thread(target=process_images, args=(cam1, cam2, cam3, cam4))
+        cam_thread.start()
+
+    time.sleep(2)
+    # cont.move_in_square()
+    cont.move_in_circle()
+    if USE_CAMS:
+        KILL_CAM_THREAD = True
+        cam_thread.join()
+    plot_trajectory(cont.position_list, EST_CORDS)
+
+    # try:
+    #     for i in range(10000):
+    #         stepSimulation()
+    # except KeyboardInterrupt:
+    #     print("Manual Interruption Occured")
+
+    # if USE_CAMS:
+    #     KILL_CAM_THREAD = True
+    #     cam_thread.join()
+        
+    # cont.move_in_circle()
+    
+    p.disconnect()
+    cv2.destroyAllWindows()

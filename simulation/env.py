@@ -8,10 +8,6 @@ import matplotlib.pyplot as plt
 import threading
 from line import *
 
-global KILL_CAM_THREAD
-KILL_CAM_THREAD = False
-USE_CAMS = True
-
 
 def roundList(arr, dec=1):
     ans = []
@@ -78,7 +74,7 @@ class Controller:
         self.rear_right = 5
         self.position = None
         self.orientation = None
-        self.position_list = [[], []]
+        self.position_list = [[], [], []]
         self.changeState()
 
     def changeState(self):
@@ -89,6 +85,7 @@ class Controller:
 
         self.position_list[0].append(self.position[0])
         self.position_list[1].append(self.position[1])
+        self.position_list[2].append(self.position[2])
         # print(self.orientation, self.position)
 
     def stop(self, maxForce=100):
@@ -141,7 +138,7 @@ class Controller:
 
         self.changeState()  
     
-    def move_in_sqaure(self, length=2):
+    def move_in_square(self, length=2):
         self.move([0, length])
         self.move([length, length])
         self.move([length, 0])
@@ -155,8 +152,10 @@ class Controller:
             y = radius * math.sin(i*theta)
             self.move([x, y])
 
-    def plot_position(self):
-        plt.plot(*self.position_list)
+    def plot_position(self, est_cords=[]):
+        plt.plot(*self.position_list[:2])
+        if est_cords:
+            plt.plot(*est_cords)
         plt.show()
 
 def get_center(image, win_name="CAM"):
@@ -185,22 +184,3 @@ def get_center(image, win_name="CAM"):
         cv2.imshow(win_name, mask)
 
     return cX, cY
-
-# def process_images(cam1, cam2, cam3, cam4):
-#     global KILL_CAM_THREAD
-#     while not KILL_CAM_THREAD:
-#         stepSimulation()
-#         image = cam1.getCameraImage()
-#         print(cam1.projection_matrix)
-#         print(get_center(image, 'CAM1_M'))
-#         cv2.imshow('CAM1', image)
-#         image = cam2.getCameraImage()
-#         print(get_center(image, 'CAM2_M'))
-#         cv2.imshow('CAM2', image)
-#         image = cam3.getCameraImage()
-#         print(get_center(image, 'CAM3_M'))
-#         cv2.imshow('CAM3', image)
-#         image = cam4.getCameraImage()
-#         print(get_center(image, 'CAM4_M'))
-#         cv2.imshow('CAM4', image)
-#         cv2.waitKey(1)

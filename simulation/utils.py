@@ -1,5 +1,7 @@
-import numpy as np
-import math
+from env import *
+from refine import *
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
 
 def rot_az(C, angle):
     C = np.array(C[:3] + [1])
@@ -31,48 +33,53 @@ def rot_ay(C, angle):
     R = np.array(R)
     return list(np.matmul(R, C))[:3]
 
-def main_process(cam, coords, num=1):
-    coords = [2 * (coords[0] / 512) - 1, 
-              (2 * (coords[1] / 512) - 1)*-1]
-    print(coords)
+
+def get_world_coords(cam, coords, num=1):
+    coords = [2 * (coords[0] / cam.width) - 1, 
+              1 - 2 * (coords[1] / cam.height)]
 
     Fc = math.sqrt(3) # 1/tan(FOV/2)
 
     # (Cax, Cay, Caz) are the cordinates of located centroid in the frame of a'th camera.
-    Cay = Fc
+    Cay = 3
     Cax = (Cay * coords[0]) / Fc
     Caz = (Cay * coords[1]) / Fc
 
     # Rotation 
     if num == 1:
         # Cam - 1
-        Rx, Ry, Rz = rot_ax([Cax, Cay, Caz], 45)
-        print(Rx, Ry, Rz)
+        Rx, Ry, Rz = rot_ax([Cax, Cay, Caz], -45)
         Rx, Ry, Rz = rot_az([Rx, Ry, Rz], 90)
     
     elif num == 2:
         # Cam - 2
-        Rx, Ry, Rz = rot_ax([Cax, Cay, Caz], 45)
+        Rx, Ry, Rz = rot_ax([Cax, Cay, Caz], -45)
         Rx, Ry, Rz = rot_az([Rx, Ry, Rz], -90)
 
     elif num == 3:
         # Cam - 3
-        Rx, Ry, Rz = rot_ax([Cax, Cay, Caz], 45)
+        Rx, Ry, Rz = rot_ax([Cax, Cay, Caz], -45)
         Rx, Ry, Rz = rot_az([Rx, Ry, Rz], 180)
 
     elif num == 4:
         # Cam - 4
-        Rx, Ry, Rz = rot_ax([Cax, Cay, Caz], 45)
+        Rx, Ry, Rz = rot_ax([Cax, Cay, Caz], -45)
 
-    Rx = Rx + 4
-    Ry = Ry + 0
-    Rz = -Rz + 4
+    # print([Rx, Ry, Rz])
+    Rx = Rx + cam.pos[0]
+    Ry = Ry + cam.pos[1]
+    Rz = Rz + cam.pos[2]
 
+    # print([Rx, Ry, Rz])
     return [Rx, Ry, Rz]
 
+def plot_trajectory(grdts, ests):
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    
+    ax.plot(*grdts, label="Ground Truth Traj")
+    ax.plot(*ests, label="Estimated Traj")
 
-C = [255, 216]
-print(main_process(1, C, 1))
-
-C = [1, 0, 1]
-print(rot_az(C, 90))
+    plt.legend()
+    plt.show()
