@@ -1,188 +1,139 @@
-import pybullet as p
-import time
-import pybullet_data
-import cv2
-import numpy as np
-import math
-import matplotlib.pyplot as plt
-import threading
+from env import *
+from refine import *
 
-def roundList(arr, dec=1):
-    ans = []
-    for el in arr:
-        ans.append(round(el, dec))
-    return ans
+def rot_az(C, angle):
+    C = np.array(C[:3] + [1])
+    angle = math.radians(angle)
+    R = [[math.cos(angle), math.sin(angle), 0, 0], 
+        [-math.sin(angle), math.cos(angle), 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]]
+    R = np.array(R)
+    return list(np.matmul(R, C))[:3]
 
-class Camera:
+def rot_ax(C, angle):
+    C = np.array(C[:3] + [1])
+    angle = math.radians(angle)
+    R = [[1, 0, 0, 0], 
+        [0, math.cos(angle), -math.sin(angle), 0], 
+        [0, math.sin(angle), math.cos(angle), 0], 
+        [0, 0, 0, 1]]
+    R = np.array(R)
+    return list(np.matmul(R, C))[:3]
 
-    def __init__(self, pos, upVec):
-        self.width = 512
-        self.height = 512
-        self.fov = 60
-        self.aspect = self.width / self.height
-        self.near = 0.02
-        self.far = 15
-        self.view_matrix = p.computeViewMatrix(pos, [0, 0, 0], upVec)
-        self.projection_matrix = p.computeProjectionMatrixFOV(self.fov, 
-                                                            self.aspect, 
-                                                            self.near, 
-                                                            self.far)
+def rot_ay(C, angle):
+    C = np.array(C[:3] + [1])
+    angle = math.radians(angle)
+    R = [[math.cos(angle), 0, math.sin(angle), 0],
+        [0, 1, 0, 0],
+        [-math.sin(angle), 0, math.cos(angle), 0],
+        [0, 0, 0, 1]]
+    R = np.array(R)
+    return list(np.matmul(R, C))[:3]
 
-        self.image = None
+
+
+def main_process(cam, coords, num=1):
+    coords = [2 * (coords[0] / cam.width) - 1, 
+              2 * (coords[1] / cam.height) - 1]
+
+    Fc = math.sqrt(3) # 1/tan(FOV/2)
+
+    # (Cax, Cay, Caz) are the cordinates of located centroid in the frame of a'th camera.
+    Cay = 1
+    Cax = (Cay * coords[0]) / 1
+    Caz = (Cay * coords[1]) / 1
+
+    # Rotation 
+    if num == 1:
+        # Cam - 1
+        Rx, Ry, Rz = rot_ax([Cax, Cay, Caz], -45)
+        Rx, Ry, Rz = rot_az([Rx, Ry, Rz], -90)
     
-    def getCameraImage(self):
-        images = p.getCameraImage(self.width,
-                            self.height,
-                            self.view_matrix,
-                            self.projection_matrix,
-                            shadow=True,
-                            renderer=p.ER_BULLET_HARDWARE_OPENGL)
-        self.image = (np.reshape(images[2], (self.height, self.width, 4)) * 1. / 255.)[:, :, :3][:, :, ::-1]
-        return self.image
+    elif num == 2:
+        # Cam - 2
+        Rx, Ry, Rz = rot_ax([Cax, Cay, Caz], -45)
+        Rx, Ry, Rz = rot_az([Rx, Ry, Rz], 90)
 
-def norm(a):
-    return math.sqrt(a[0]**2 + a[1]**2)
+    elif num == 3:
+        # Cam - 3
+        Rx, Ry, Rz = rot_ax([Cax, Cay, Caz], -45)
+        Rx, Ry, Rz = rot_az([Rx, Ry, Rz], 180)
 
-def getAngle(a, b):
-    assert len(a) == 2 and len(b) == 2, "Length of a and b must be 2"
-    angle = math.acos((a[0] * b[0] + a[1] * b[1])/(norm(a)*norm(b)))
-    if a[0]*b[1] > a[1]*b[0]:
-        angle = 2*math.pi - angle
-    return angle
+    elif num == 4:
+        # Cam - 4
+        Rx, Ry, Rz = rot_ax([Cax, Cay, Caz], -45)
 
-def parse_angle(angle):
-    if angle < 0:
-        angle = 2*math.pi + angle
-    return angle
+    Rx = Rx - cam.pos[0]
+    Ry = Ry - cam.pos[1]
+    Rz = Rz - cam.pos[2]
 
-def stepSimulation():
-    p.stepSimulation()
-    time.sleep(1./240.)
+    # print([Rx, Ry, Rz])
+    return [Rx, Ry, Rz]
 
 
-class Controller:
-
-    def __init__(self, init_pos=[0, 0, 0]):
-
-        self.husky = p.loadURDF("bot.urdf", *init_pos)
-        self.front_left = 2
-        self.front_right = 3
-        self.rear_left = 4
-        self.rear_right = 5
-        self.position = None
-        self.orientation = None
-        self.position_list = [[], []]
-        self.changeState()
-
-    def changeState(self):
-        self.position, self.orientation = p.getBasePositionAndOrientation(self.husky)
-        self.orientation = p.getEulerFromQuaternion(self.orientation)
-
-        self.position = roundList(self.position, 5)
-
-        self.position_list[0].append(self.position[0])
-        self.position_list[1].append(self.position[1])
-        # print(self.orientation, self.position)
-
-    def stop(self, maxForce=100):
-        p.setJointMotorControl(self.husky, self.front_left, p.VELOCITY_CONTROL, 0, maxForce)
-        p.setJointMotorControl(self.husky, self.front_right, p.VELOCITY_CONTROL, 0, maxForce)
-        p.setJointMotorControl(self.husky, self.rear_left, p.VELOCITY_CONTROL, 0, maxForce)
-        p.setJointMotorControl(self.husky, self.rear_right, p.VELOCITY_CONTROL, 0, maxForce)
-
-    def turn(self, point, velocity, maxForce, epsilon, K=5):
-        vecPoint = [point[0] - self.position[0], point[1] - self.position[1]]
-        err = getAngle(vecPoint, [1, 0]) - parse_angle(self.orientation[2])
-        if err > math.pi:
-            err = -(2*math.pi - err)
-        if err < -math.pi:
-            err = (2*math.pi + err)
-        
-        while abs(err) > epsilon:
-            # print(err)
-            err = K * (err/math.pi)
-            # print(getAngle(vecPoint, [1, 0]), parse_angle(self.orientation[2]), vecPoint, err)
-
-            p.setJointMotorControl(self.husky, self.front_left, p.VELOCITY_CONTROL, -err*velocity, maxForce)
-            p.setJointMotorControl(self.husky, self.front_right, p.VELOCITY_CONTROL, err*velocity, maxForce)
-            p.setJointMotorControl(self.husky, self.rear_left, p.VELOCITY_CONTROL, -err*velocity, maxForce)
-            p.setJointMotorControl(self.husky, self.rear_right, p.VELOCITY_CONTROL, err*velocity, maxForce)
-            self.changeState()  
-            vecPoint = [point[0] - self.position[0], point[1] - self.position[1]]
-            err = getAngle(vecPoint, [1, 0]) - parse_angle(self.orientation[2])
-            if err > math.pi:
-                err = -(2*math.pi - err)
-            if err < -math.pi:
-                err = (2*math.pi + err)
-            
-            stepSimulation()
-        self.stop()
-
-    def move(self, point, velocity=5, maxForce=100, epsilon=0.25):
-        assert len(point) == 2, "len(point) must be equal to 2"
-
-        while math.sqrt((point[0]-self.position[0])**2 + (point[1]-self.position[1])**2) > epsilon:
-            self.turn(point, velocity*2, maxForce, epsilon)
-            p.setJointMotorControl(self.husky, self.front_left, p.VELOCITY_CONTROL, velocity, maxForce)
-            p.setJointMotorControl(self.husky, self.front_right, p.VELOCITY_CONTROL, velocity, maxForce)
-            p.setJointMotorControl(self.husky, self.rear_left, p.VELOCITY_CONTROL, velocity, maxForce)
-            p.setJointMotorControl(self.husky, self.rear_right, p.VELOCITY_CONTROL, velocity, maxForce)
-            self.changeState()
-            stepSimulation()   
-            # print("MOVING FORWARD")
-        self.stop()
-
-        self.changeState()  
-    
-    def move_in_sqaure(self, length=2):
-        self.move([0, length])
-        self.move([length, length])
-        self.move([length, 0])
-        self.move([0, 0])
-
-    def move_in_circle(self, radius=2, segments=24):
-        self.move([radius, 0])
-        theta = 2 * math.pi / segments
-        for i in range(1, segments+1):
-            x = radius * math.cos(i*theta)
-            y = radius * math.sin(i*theta)
-            self.move([x, y])
-
-    def plot_position(self):
-        plt.plot(*self.position_list)
-        plt.show()
-    
 def process_images(cam1, cam2, cam3, cam4):
     global KILL_CAM_THREAD
+    time.sleep(1)
+    f = open("run.txt",'w')
+
     while not KILL_CAM_THREAD:
         stepSimulation()
-        cv2.imshow('CAM1', cam1.getCameraImage())
-        cv2.imshow('CAM2', cam2.getCameraImage())
-        cv2.imshow('CAM3', cam3.getCameraImage())
-        cv2.imshow('CAM4', cam4.getCameraImage())
+        lines = []
+
+        image = cam1.getCameraImage()
+        cX, cY = get_center(image, 'CAM1_M')
+        Rwc = main_process(cam1, [cX, cY], 1)
+        f.write(f"{Rwc[0]} {Rwc[1]} {Rwc[2]}\n")
+        lines.append(line3d(cam1.pos, Rwc))
+        cv2.imshow('CAM1', image)
+
+        image = cam2.getCameraImage()
+        cX, cY = get_center(image, 'CAM2_M')
+        Rwc = main_process(cam2, [cX, cY], 2)
+        f.write(f"{Rwc[0]} {Rwc[1]} {Rwc[2]}\n")
+        lines.append(line3d(cam2.pos, Rwc))
+        cv2.imshow('CAM2', image)
+
+        image = cam3.getCameraImage()
+        cX, cY = get_center(image, 'CAM3_M')
+        Rwc = main_process(cam3, [cX, cY], 3)
+        f.write(f"{Rwc[0]} {Rwc[1]} {Rwc[2]}\n")
+        lines.append(line3d(cam3.pos, Rwc))
+        cv2.imshow('CAM3', image)
+
+        image = cam4.getCameraImage()
+        cX, cY = get_center(image, 'CAM4_M')
+        Rwc = main_process(cam4, [cX, cY], 4)
+        f.write(f"{Rwc[0]} {Rwc[1]} {Rwc[2]}\n")
+        lines.append(line3d(cam4.pos, Rwc))
+        cv2.imshow('CAM4', image)
+
+        output = refine(lines)
+        print("OUTPUT : ", output)
+        f.write(f"{output[0]} {output[1]} {output[2]}\n")
+        # for li in lines:
+        #     print(li.perp_dist([1, 0, 0.5]))
 
         cv2.waitKey(1)
-
-
-global KILL_CAM_THREAD
-KILL_CAM_THREAD = False
-USE_CAMS = False
+    f.close()
 
 if __name__ == '__main__':
     
     physicsClient = p.connect(p.GUI) # or p.DIRECT for non-graphical version
     p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
-    p.setGravity(0,0,-10)
+    p.setGravity(0,0,-9.8)
 
     planeId = p.loadURDF("plane.urdf")
 
-    cont = Controller()
+    cont = Controller([2, 0, 0])
 
     if USE_CAMS:
-        cam1 = Camera([5, 0, 2], [-1, 0, 0])
-        cam2 = Camera([-5, 0, 2], [1, 0, 0])
-        cam3 = Camera([0, 5, 2], [0, -1, 0])
-        cam4 = Camera([0, -5, 2], [0, 1, 0])
+        temp = 4
+        cam1 = Camera([temp, 0, temp], [-1, 0, 0])
+        cam2 = Camera([-temp, 0, temp], [1, 0, 0])
+        cam3 = Camera([0, temp, temp], [0, -1, 0])
+        cam4 = Camera([0, -temp, temp], [0, 1, 0])
         cam_thread = threading.Thread(target=process_images, args=(cam1, cam2, cam3, cam4))
         cam_thread.start()
 
@@ -203,8 +154,14 @@ if __name__ == '__main__':
         # print(cubePos)
     # cont.move_in_sqaure()
     # cont.move([5, 0])
-    cont.move_in_circle()
-    cont.plot_position()
+    try:
+        for i in range(10000):
+            stepSimulation()
+    except KeyboardInterrupt:
+        print("Manual Interruption Occured")
+        
+    # cont.move_in_circle()
+    # cont.plot_position()
     if USE_CAMS:
         KILL_CAM_THREAD = True
         cam_thread.join()
