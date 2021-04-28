@@ -66,22 +66,22 @@ if __name__ == '__main__':
         cam_thread.start()
 
     time.sleep(2)
-    # cont.move_in_square()
+    cont.move_in_square()
     # cont.move_in_circle()
-    # if USE_CAMS:
-    #     KILL_CAM_THREAD = True
-    #     cam_thread.join()
-    # plot_trajectory(cont.position_list, EST_CORDS)
-
-    try:
-        for i in range(10000):
-            stepSimulation()
-    except KeyboardInterrupt:
-        print("Manual Interruption Occured")
-
     if USE_CAMS:
         KILL_CAM_THREAD = True
         cam_thread.join()
+    plot_trajectory(cont.position_list, EST_CORDS)
+
+    # try:
+    #     for i in range(10000):
+    #         stepSimulation()
+    # except KeyboardInterrupt:
+    #     print("Manual Interruption Occured")
+
+    # if USE_CAMS:
+    #     KILL_CAM_THREAD = True
+    #     cam_thread.join()
     
     p.disconnect()
     cv2.destroyAllWindows()

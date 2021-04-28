@@ -27,8 +27,3 @@ class line3d:
         
 
         return 
-
-
-# l = line3d([2, 1, 2], [3, 1, -1])
-
-# print(l.perp_dist([0, 2, 3]))
