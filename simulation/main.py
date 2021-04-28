@@ -42,7 +42,7 @@ def process_images(cam1, cam2, cam3, cam4):
         print("OUTPUT : ", output)
         EST_CORDS[0].append(output[0])
         EST_CORDS[1].append(output[1])
-        EST_CORDS[2].append(output[2]-0.5)
+        EST_CORDS[2].append(output[2] - 0.5)
        
         cv2.waitKey(1)
 
@@ -58,32 +58,30 @@ if __name__ == '__main__':
 
     if USE_CAMS:
         temp = 4
-        cam1 = Camera([temp, 0, temp], [-1, 0, 0])
-        cam2 = Camera([-temp, 0, temp], [1, 0, 0])
-        cam3 = Camera([0, temp, temp], [0, -1, 0])
-        cam4 = Camera([0, -temp, temp], [0, 1, 0])
+        cam1 = Camera([temp, 0, temp], [0, 0, 1])
+        cam2 = Camera([-temp, 0, temp], [0, 0, 1])
+        cam3 = Camera([0, temp, temp], [0, 0, 1])
+        cam4 = Camera([0, -temp, temp], [0, 0, 1])
         cam_thread = threading.Thread(target=process_images, args=(cam1, cam2, cam3, cam4))
         cam_thread.start()
 
     time.sleep(2)
     # cont.move_in_square()
-    cont.move_in_circle()
-    if USE_CAMS:
-        KILL_CAM_THREAD = True
-        cam_thread.join()
-    plot_trajectory(cont.position_list, EST_CORDS)
-
-    # try:
-    #     for i in range(10000):
-    #         stepSimulation()
-    # except KeyboardInterrupt:
-    #     print("Manual Interruption Occured")
-
+    # cont.move_in_circle()
     # if USE_CAMS:
     #     KILL_CAM_THREAD = True
     #     cam_thread.join()
-        
-    # cont.move_in_circle()
+    # plot_trajectory(cont.position_list, EST_CORDS)
+
+    try:
+        for i in range(10000):
+            stepSimulation()
+    except KeyboardInterrupt:
+        print("Manual Interruption Occured")
+
+    if USE_CAMS:
+        KILL_CAM_THREAD = True
+        cam_thread.join()
     
     p.disconnect()
     cv2.destroyAllWindows()

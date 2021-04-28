@@ -3,36 +3,6 @@ from refine import *
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
-def rot_az(C, angle):
-    C = np.array(C[:3] + [1])
-    angle = math.radians(angle)
-    R = [[math.cos(angle), -math.sin(angle), 0, 0], 
-        [math.sin(angle), math.cos(angle), 0, 0],
-        [0, 0, 1, 0],
-        [0, 0, 0, 1]]
-    R = np.array(R)
-    return list(np.matmul(R, C))[:3]
-
-def rot_ax(C, angle):
-    C = np.array(C[:3] + [1])
-    angle = math.radians(angle)
-    R = [[1, 0, 0, 0], 
-        [0, math.cos(angle), -math.sin(angle), 0], 
-        [0, math.sin(angle), math.cos(angle), 0], 
-        [0, 0, 0, 1]]
-    R = np.array(R)
-    return list(np.matmul(R, C))[:3]
-
-def rot_ay(C, angle):
-    C = np.array(C[:3] + [1])
-    angle = math.radians(angle)
-    R = [[math.cos(angle), 0, math.sin(angle), 0],
-        [0, 1, 0, 0],
-        [-math.sin(angle), 0, math.cos(angle), 0],
-        [0, 0, 0, 1]]
-    R = np.array(R)
-    return list(np.matmul(R, C))[:3]
-
 
 def get_world_coords(cam, coords, num=1):
     coords = [2 * (coords[0] / cam.width) - 1, 
@@ -45,30 +15,9 @@ def get_world_coords(cam, coords, num=1):
     Cax = (Cay * coords[0]) / Fc
     Caz = (Cay * coords[1]) / Fc
 
-    # Rotation 
-    if num == 1:
-        # Cam - 1
-        Rx, Ry, Rz = rot_ax([Cax, Cay, Caz], -45)
-        Rx, Ry, Rz = rot_az([Rx, Ry, Rz], 90)
-    
-    elif num == 2:
-        # Cam - 2
-        Rx, Ry, Rz = rot_ax([Cax, Cay, Caz], -45)
-        Rx, Ry, Rz = rot_az([Rx, Ry, Rz], -90)
+    mat = create_transformation_matrix(cam.pos)
 
-    elif num == 3:
-        # Cam - 3
-        Rx, Ry, Rz = rot_ax([Cax, Cay, Caz], -45)
-        Rx, Ry, Rz = rot_az([Rx, Ry, Rz], 180)
-
-    elif num == 4:
-        # Cam - 4
-        Rx, Ry, Rz = rot_ax([Cax, Cay, Caz], -45)
-
-    # print([Rx, Ry, Rz])
-    Rx = Rx + cam.pos[0]
-    Ry = Ry + cam.pos[1]
-    Rz = Rz + cam.pos[2]
+    Rx, Ry, Rz = np.matmul(mat, [Cax, Cay, Caz, 1])[:3]
 
     # print([Rx, Ry, Rz])
     return [Rx, Ry, Rz]
@@ -78,8 +27,66 @@ def plot_trajectory(grdts, ests):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     
+    maxn = float("-inf")
+    maxn = max(maxn, np.max(grdts))
+    maxn = max(maxn, np.max(ests))
+
+    minn = float("inf")
+    minn = min(minn, np.min(grdts))
+    minn = min(minn, np.min(ests))
+
+    ax.set_xlim3d(minn, maxn)
+    ax.set_ylim3d(minn, maxn)
+    ax.set_zlim3d(minn, maxn)
+
     ax.plot(*grdts, label="Ground Truth Traj")
     ax.plot(*ests, label="Estimated Traj")
 
     plt.legend()
     plt.show()
+
+def normalize(a):
+    mod = math.sqrt((a[0]*a[0]) + (a[1]*a[1]) + (a[2]*a[2]))
+    a[0] /= mod
+    a[1] /= mod
+    a[2] /= mod
+
+    return a
+
+def create_transformation_matrix(pos):
+
+    # Cameras are looking at [0, 0, 0]
+    look = [0, 0, 0]
+    mat = [ [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0] ]
+    mat[0][3] = pos[0]
+    mat[1][3] = pos[1]
+    mat[2][3] = pos[2]
+    mat[3][3] = 1
+
+    upVec = normalize([-pos[0], -pos[1], (pos[0]*pos[0] + pos[1]*pos[1])/pos[2]])
+
+    direc = normalize([look[0] - pos[0], look[1] - pos[1], look[2] - pos[2]])
+
+    right = normalize(np.cross(direc, upVec).tolist())
+
+    newUp = np.cross(right, direc).tolist()
+
+    mat[0][0] = right[0]
+    mat[1][0] = right[1]
+    mat[2][0] = right[2]
+    mat[3][0] = 0
+
+    mat[0][1] = direc[0]
+    mat[1][1] = direc[1]
+    mat[2][1] = direc[2]
+    mat[3][1] = 0
+    
+    mat[0][2] = newUp[0]
+    mat[1][2] = newUp[1]
+    mat[2][2] = newUp[2]
+    mat[3][2] = 0
+    
+    return mat
