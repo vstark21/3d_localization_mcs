@@ -1,4 +1,6 @@
 from utils import *
+from env import *
+from refine import *
 
 global EST_CORDS, KILL_CAM_THREAD
 KILL_CAM_THREAD = False
@@ -57,7 +59,7 @@ if __name__ == '__main__':
     cont = Controller([0, 0, 0])
 
     if USE_CAMS:
-        temp = 4
+        temp = 6
         cam1 = Camera([temp, 0, temp], [0, 0, 1])
         cam2 = Camera([-temp, 0, temp], [0, 0, 1])
         cam3 = Camera([0, temp, temp], [0, 0, 1])

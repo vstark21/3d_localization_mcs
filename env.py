@@ -1,19 +1,4 @@
-import pybullet as p
-import time
-import pybullet_data
-import cv2
-import numpy as np
-import math
-import matplotlib.pyplot as plt
-import threading
-from line import *
-
-
-def roundList(arr, dec=1):
-    ans = []
-    for el in arr:
-        ans.append(round(el, dec))
-    return ans
+from utils import *
 
 class Camera:
 
@@ -43,20 +28,9 @@ class Camera:
         self.image = (np.reshape(images[2], (self.height, self.width, 4)) * 1. / 255.)[:, :, :3][:, :, ::-1]
         return self.image
 
-def norm(a):
-    return math.sqrt(a[0]**2 + a[1]**2)
+    def distort_image(self):
+        return 
 
-def getAngle(a, b):
-    assert len(a) == 2 and len(b) == 2, "Length of a and b must be 2"
-    angle = math.acos((a[0] * b[0] + a[1] * b[1])/(norm(a)*norm(b)))
-    if a[0]*b[1] > a[1]*b[0]:
-        angle = 2*math.pi - angle
-    return angle
-
-def parse_angle(angle):
-    if angle < 0:
-        angle = 2*math.pi + angle
-    return angle
 
 def stepSimulation():
     p.stepSimulation()
@@ -157,30 +131,3 @@ class Controller:
         if est_cords:
             plt.plot(*est_cords)
         plt.show()
-
-def get_center(image, win_name="CAM"):
-    image = np.array(image*255, dtype=np.uint8)
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    
-    lower_red = np.array([0,120,70])
-    upper_red = np.array([10,255,255])
-    mask1 = cv2.inRange(hsv, lower_red, upper_red)
-
-    lower_red = np.array([170,120,70])
-    upper_red = np.array([180,255,255])
-    mask2 = cv2.inRange(hsv,lower_red,upper_red)
-
-    mask = mask1 + mask2
-    # mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
-
-    contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    contours.sort(key=lambda x:cv2.contourArea(x), reverse=True)
-
-    M = cv2.moments(contours[0])
-    cX = int(M["m10"] / M["m00"])
-    cY = int(M["m01"] / M["m00"])
-    if False:
-        cv2.imshow(win_name, mask)
-
-    return cX, cY

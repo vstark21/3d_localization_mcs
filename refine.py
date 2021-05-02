@@ -31,8 +31,7 @@ def refine(lines, eps=0.000001, lr=0.05):
         prev_loss = L
         num_iter+=1
 
-    print(num_iter, " NUMITER")
-    print(L)
+    print(" NUMITER : ", num_iter)
 
     return p_init
 
