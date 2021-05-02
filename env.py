@@ -1,5 +1,4 @@
 from utils import *
-import itertools
 
 class Camera:
 

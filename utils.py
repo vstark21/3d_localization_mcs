@@ -7,6 +7,7 @@ import math
 import matplotlib.pyplot as plt
 import threading
 from mpl_toolkits.mplot3d import Axes3D
+import itertools
 
 
 def roundList(arr, dec=1):
@@ -113,6 +114,10 @@ def plot_trajectory(grdts, ests):
     ax.set_xlim3d(minn, maxn)
     ax.set_ylim3d(minn, maxn)
     ax.set_zlim3d(minn, maxn)
+
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
 
     ax.plot(*grdts, label="Ground Truth Traj")
     ax.plot(*ests, label="Estimated Traj")
