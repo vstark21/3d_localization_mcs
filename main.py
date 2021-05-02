@@ -21,6 +21,7 @@ def process_images(cam1, cam2, cam3, cam4):
         Rwc = get_world_coords(cam1, [cX, cY], 1)
         lines.append(line3d(cam1.pos, Rwc))
         cv2.imshow('CAM1', image)
+        cv2.imwrite("image1.png", image*255)
 
         image = cam2.getCameraImage()
         cX, cY = get_center(image, 'CAM2_M')
@@ -52,7 +53,7 @@ if __name__ == '__main__':
     
     physicsClient = p.connect(p.GUI) # or p.DIRECT for non-graphical version
     p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
-    p.setGravity(0,0,-9.8)
+    p.setGravity(0,0,0)
 
     planeId = p.loadURDF("plane.urdf")
 
@@ -68,22 +69,23 @@ if __name__ == '__main__':
         cam_thread.start()
 
     time.sleep(2)
-    cont.move_in_square()
+    # cont.move_in_square()
+    # cont.move([3, 3])
     # cont.move_in_circle()
-    if USE_CAMS:
-        KILL_CAM_THREAD = True
-        cam_thread.join()
-    plot_trajectory(cont.position_list, EST_CORDS)
-
-    # try:
-    #     for i in range(10000):
-    #         stepSimulation()
-    # except KeyboardInterrupt:
-    #     print("Manual Interruption Occured")
-
     # if USE_CAMS:
     #     KILL_CAM_THREAD = True
     #     cam_thread.join()
+    # plot_trajectory(cont.position_list, EST_CORDS)
+
+    try:
+        for i in range(10000):
+            stepSimulation()
+    except KeyboardInterrupt:
+        print("Manual Interruption Occured")
+
+    if USE_CAMS:
+        KILL_CAM_THREAD = True
+        cam_thread.join()
     
     p.disconnect()
     cv2.destroyAllWindows()

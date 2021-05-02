@@ -47,9 +47,9 @@ def get_center(image, win_name="CAM"):
 
     contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    contours.sort(key=lambda x:cv2.contourArea(x), reverse=True)
+    max_cnt = max(contours, key=lambda x:cv2.contourArea(x))
 
-    M = cv2.moments(contours[0])
+    M = cv2.moments(max_cnt)
     cX = int(M["m10"] / M["m00"])
     cY = int(M["m01"] / M["m00"])
     if False:
@@ -58,16 +58,37 @@ def get_center(image, win_name="CAM"):
     return cX, cY
 
 
+def undistort_point(point, dist_coeffs, f, width, height):
+    point = np.array(point)
+    c = np.array([width / 2, height / 2])
+    point = (point - c) / f
+    r = (point[0] * point[0] + point[1] * point[1])
+
+    dp = np.array([
+        2 * dist_coeffs[2] * point[0] * point[1] + dist_coeffs[3] * (r + 2 * (point[0] * point[0])),
+        dist_coeffs[2] * (r + 2 * (point[1] * point[1])) +  2 * dist_coeffs[3] * point[0] * point[1]])
+    pd = (1 + dist_coeffs[0] * r + dist_coeffs[1] * r * r + dist_coeffs[4] * r * r * r) * point + dp
+
+    xp, yp = pd * f + c
+
+    return [xp, yp]
+
+
 def get_world_coords(cam, coords, num=1):
+
+    if cam.distort:
+        coords = undistort_point(coords, cam.dist_coeffs, cam.f, cam.width, cam.height)
+
     coords = [2 * (coords[0] / cam.width) - 1, 
               1 - 2 * (coords[1] / cam.height)]
 
-    Fc = math.sqrt(3) # 1/tan(FOV/2)
+    Fc = [1 / math.tan(math.radians(cam.fov / 2)),
+            1 / math.tan(math.radians(cam.fov / 2))] # 1/tan(FOV/2)
 
     # (Cax, Cay, Caz) are the cordinates of located centroid in the frame of a'th camera.
     Cay = 3
-    Cax = (Cay * coords[0]) / Fc
-    Caz = (Cay * coords[1]) / Fc
+    Cax = (Cay * coords[0]) / Fc[0]
+    Caz = (Cay * coords[1]) / Fc[1]
 
     mat = create_transformation_matrix(cam.pos)
 
