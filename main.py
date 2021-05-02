@@ -4,7 +4,7 @@ from refine import *
 
 global EST_CORDS, KILL_CAM_THREAD
 KILL_CAM_THREAD = False
-USE_CAMS = True
+USE_CAMS, USE_DISTORTION = True, False
 EST_CORDS = [[], [], []]
 
 
@@ -59,16 +59,17 @@ if __name__ == '__main__':
     cont = Controller([0, 0, 0])
 
     if USE_CAMS:
-        temp = 6
-        cam1 = Camera([temp, 0, temp], [0, 0, 1])
-        cam2 = Camera([-temp, 0, temp], [0, 0, 1])
-        cam3 = Camera([0, temp, temp], [0, 0, 1])
-        cam4 = Camera([0, -temp, temp], [0, 0, 1])
+        temp = 4
+        cam1 = Camera([temp, 0, temp], [0, 0, 1], USE_DISTORTION)
+        cam2 = Camera([-temp, 0, temp], [0, 0, 1], USE_DISTORTION)
+        cam3 = Camera([0, temp, temp], [0, 0, 1], USE_DISTORTION)
+        cam4 = Camera([0, -temp, temp], [0, 0, 1], USE_DISTORTION)
         cam_thread = threading.Thread(target=process_images, args=(cam1, cam2, cam3, cam4))
         cam_thread.start()
 
     time.sleep(2)
     cont.move_in_square()
+    # cont.move([3, 3])
     # cont.move_in_circle()
     if USE_CAMS:
         KILL_CAM_THREAD = True
