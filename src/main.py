@@ -4,7 +4,7 @@ from refine import *
 
 global EST_CORDS, KILL_CAM_THREAD
 KILL_CAM_THREAD = False
-USE_CAMS, USE_DISTORTION = True, False
+USE_CAMS, USE_DISTORTION = True, True
 EST_CORDS = [[], [], []]
 
 
@@ -39,12 +39,13 @@ def process_images(cam1, cam2, cam3, cam4):
         Rwc = get_world_coords(cam4, [cX, cY], 4)
         lines.append(line3d(cam4.pos, Rwc))
         cv2.imshow('CAM4', image)
+        cv2.imwrite("image.png", image*255)
 
         output = refine(lines)
         print("OUTPUT : ", output)
         EST_CORDS[0].append(output[0])
         EST_CORDS[1].append(output[1])
-        EST_CORDS[2].append(output[2] - 0.5)
+        EST_CORDS[2].append(output[2] - 0.5-0.1)
        
         cv2.waitKey(1)
 
@@ -77,14 +78,14 @@ if __name__ == '__main__':
     plot_trajectory(cont.position_list, EST_CORDS)
 
     # try:
-    #     for i in range(10000):
+    #     for i in range(1000):
     #         stepSimulation()
     # except KeyboardInterrupt:
     #     print("Manual Interruption Occured")
 
-    # if USE_CAMS:
-    #     KILL_CAM_THREAD = True
-    #     cam_thread.join()
+    if USE_CAMS:
+        KILL_CAM_THREAD = True
+        cam_thread.join()
     
     p.disconnect()
     cv2.destroyAllWindows()
