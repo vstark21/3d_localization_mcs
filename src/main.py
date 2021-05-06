@@ -4,7 +4,7 @@ from refine import *
 
 global EST_CORDS, KILL_CAM_THREAD
 KILL_CAM_THREAD = False
-USE_CAMS, USE_DISTORTION = True, True
+USE_CAMS, USE_DISTORTION = True, False
 EST_CORDS = [[], [], []]
 
 
@@ -69,19 +69,19 @@ if __name__ == '__main__':
         cam_thread.start()
 
     time.sleep(2)
-    cont.move_in_square()
+    # cont.move_in_square()
     # cont.move([3, 3])
     # cont.move_in_circle()
-    if USE_CAMS:
-        KILL_CAM_THREAD = True
-        cam_thread.join()
-    plot_trajectory(cont.position_list, EST_CORDS)
+    # if USE_CAMS:
+    #     KILL_CAM_THREAD = True
+    #     cam_thread.join()
+    # plot_trajectory(cont.position_list, EST_CORDS)
 
-    # try:
-    #     for i in range(1000):
-    #         stepSimulation()
-    # except KeyboardInterrupt:
-    #     print("Manual Interruption Occured")
+    try:
+        for i in range(100000):
+            stepSimulation()
+    except KeyboardInterrupt:
+        print("Manual Interruption Occured")
 
     if USE_CAMS:
         KILL_CAM_THREAD = True
